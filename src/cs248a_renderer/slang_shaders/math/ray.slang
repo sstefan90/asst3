@@ -23,11 +23,16 @@ public struct Ray
      */
     public Ray transform(float4x4 matrix)
     {
-        // TODO: Student implementation starts here.
-        
-        return this;
 
-        // TODO: Student implementation ends here.
+        float4 origin_new = mul(matrix, float4(origin, 1.0));
+        float4 direction_new = mul(matrix, float4(direction, 0.0));
+
+        Ray ray_t;
+        ray_t.origin = (origin_new / origin_new.w).xyz;
+        ray_t.direction = normalize(direction_new.xyz);
+        ray_t.tRange = this.tRange;
+        return ray_t;
+
     }
 };
 

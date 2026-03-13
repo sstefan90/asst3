@@ -95,21 +95,54 @@ public struct SphereSDF : ISDF
     [NoDiffThis, Differentiable]
     public float sdf(float3 point)
     {
-        // TODO: Student implementation starts here.
+        
 
-        return 0.0;
+        return length(point - center) - radius;
 
-        // TODO: Student implementation ends here.
+        
     }
 
     public float3 normal(float3 point)
     {
         // TODO: Student implementation starts here.
+        float3 norm = (point - center) / length(point - center);
 
-        return float3(0.0);
+        return norm;
 
         // TODO: Student implementation ends here.
     }
+
+    // public Optional<RayHitResult> hit(Ray ray) {
+    //     float t = 0;
+    //     float a = 1.0; // assume ray direction always unit length;
+    //     float b = dot(ray.origin, ray.direction);
+
+    //     float3 v = ray.origin - center;
+    //     float c = dot(v, v) - radius;
+
+    //     float discriminant = pow(b, 2) - 4 * a * c;
+    //     if (discriminant < 0) {
+    //         return Optional<RayHitResult>();
+    //     }
+
+    //     float t_1 = (-b + pow(discriminant, 0.5)) / 2.0;
+    //     float t_2 = (-b - pow(discriminant, 0.5)) / 2.0;
+
+    //     if (t_1 < 0.0) {
+    //         t_1 = t_2;
+    //     }
+
+    //     t = min(t_1, t_2);
+
+    //     if (t < 0.0) {
+    //         return Optional<RayHitResult>();
+    //     }
+
+    //     RayHitResult result;
+    //     result.t = t;
+    //     result.normal = this.normal(ray.origin + t*ray.direction);
+    //     return result;
+    // }
 }
 
 public struct CubeSDF : ISDF
@@ -121,8 +154,11 @@ public struct CubeSDF : ISDF
     public float sdf(float3 point)
     {
         // TODO: Student implementation starts here.
+        //l2 distance and linf distance
 
-        return 0.0;
+        float3 p = abs(point) - size;
+
+        return length(max(p, 0.0)) + min(max(p.x, max(p.y, p.z)), 0);
 
         // TODO: Student implementation ends here.
     }
@@ -130,10 +166,16 @@ public struct CubeSDF : ISDF
     public float3 normal(float3 point)
     {
         // TODO: Student implementation starts here.
+        // we take the coordinate of the largest element of the vector from abs(point) - size
 
-        return float3(0.0);
+        float3 p = abs(point) - size;
 
-        // TODO: Student implementation ends here.
+        float maxP = max(p.x, (max(p.y, p.z)));
+
+        if (maxP == p.x) return float3(sign(point.x), 0.0, 0.0);
+        if (maxP == p.y) return float3(0.0, sign(point.y), 0.0);
+        return float3(0.0, 0.0, sign(point.z));
+
     }
 }
 
@@ -155,7 +197,7 @@ public struct CustomSDF : ISDF
             float4(0.0, 0.0, 1.0, 0.0),
             float4(0.0, 0.0, 0.0, 1.0)); // Identity matrix
         SphereSDF innerSphere;
-        innerSphere.center = float3(0.0, 0.0, 0.0);
+        innerSphere.center = float3(1.0, 1.0, 1.0);
         innerSphere.radius = this.sphereRadius;
         innerSphere.invModelMatrix = float4x4(
             float4(1.0, 0.0, 0.0, 0.0),

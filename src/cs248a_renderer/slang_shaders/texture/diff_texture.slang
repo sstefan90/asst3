@@ -110,10 +110,57 @@ public vector<T, N> sampleBilinear<T, let N : int>(DiffTexture2D<T, N> diffTex, 
 // Backward pass for bilinear texture sampling.
 public void sampleBilinear_bwd<T, let N : int>(DifferentialPtrPair<DiffTexture2D<T, N>> diffTexPair, float2 uv, vector<T, N> dOut)
     where T : IArithmeticAtomicable, IFloat
-{
-    // TODO: Student implementation starts here.
 
-    // TODO: Student implementation ends here.
+
+{
+
+    // Convert UV to continuous texel space
+    float2 st = uv * float2(diffTexPair.p.size);
+
+    // Base integer coordinates and fractional parts
+    int x0 = int(floor(st.x));
+    int y0 = int(floor(st.y));
+    float fx = st.x - float(x0);
+    float fy = st.y - float(y0);
+
+    // Neighbor coordinates
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
+
+    // Clamp to texture bounds
+    int maxX = int(diffTexPair.p.size.x) - 1;
+    int maxY = int(diffTexPair.p.size.y) - 1;
+    x0 = clamp(x0, 0, maxX);
+    y0 = clamp(y0, 0, maxY);
+    x1 = clamp(x1, 0, maxX);
+    y1 = clamp(y1, 0, maxY);
+
+    // Compute linear indices
+    uint idx00 = uint(y0) * diffTexPair.p.size.x + uint(x0);
+    uint idx10 = uint(y0) * diffTexPair.p.size.x + uint(x1);
+    uint idx01 = uint(y1) * diffTexPair.p.size.x + uint(x0);
+    uint idx11 = uint(y1) * diffTexPair.p.size.x + uint(x1);
+
+    // Fetch texels
+    vector<T, N> c00 = diffTexPair.p.tex[idx00];
+    vector<T, N> c10 = diffTexPair.p.tex[idx10];
+    vector<T, N> c01 = diffTexPair.p.tex[idx01];
+    vector<T, N> c11 = diffTexPair.p.tex[idx11];
+
+    // Bilinear blend per component using float math, then cast back to T
+    float w00 = (1.0 - fx) * (1.0 - fy);
+    float w10 = fx * (1.0 - fy);
+    float w01 = (1.0 - fx) * fy;
+    float w11 = fx * fy;
+
+    [ForceUnroll]
+    for (uint i = 0; i < N; i++){
+        diffTexPair.d.dTex[idx00][i].add((T)w00 * dOut[i]);
+        diffTexPair.d.dTex[idx10][i].add((T)w10 * dOut[i]);
+        diffTexPair.d.dTex[idx01][i].add((T)w01 * dOut[i]);
+        diffTexPair.d.dTex[idx11][i].add((T)w11 * dOut[i]);
+
+    }
 }
 
 public struct DiffTexture3D_Differential<T, let N : int> : IDifferentiablePtrType
@@ -258,7 +305,76 @@ public vector<T, N> sampleTrilinear<T, let N : int>(DiffTexture3D<T, N> diffTex,
 public void sampleTrilinear_bwd<T, let N : int>(DifferentialPtrPair<DiffTexture3D<T, N>> diffTexPair, float3 uv, vector<T, N> dOut)
     where T : IArithmeticAtomicable, IFloat
 {
-    // TODO: Student implementation starts here.
+    // Convert UVW to continuous texel space
+    float3 stp = uv * float3(diffTexPair.p.size);
 
-    // TODO: Student implementation ends here.
+    // Base integer coordinates and fractional parts
+    int x0 = int(floor(stp.x));
+    int y0 = int(floor(stp.y));
+    int z0 = int(floor(stp.z));
+    float fx = stp.x - float(x0);
+    float fy = stp.y - float(y0);
+    float fz = stp.z - float(z0);
+
+    // Neighbor coordinates
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
+    int z1 = z0 + 1;
+
+    // Clamp to texture bounds
+    int maxX = int(diffTexPair.p.size.x) - 1;
+    int maxY = int(diffTexPair.p.size.y) - 1;
+    int maxZ = int(diffTexPair.p.size.z) - 1;
+    x0 = clamp(x0, 0, maxX);
+    y0 = clamp(y0, 0, maxY);
+    z0 = clamp(z0, 0, maxZ);
+    x1 = clamp(x1, 0, maxX);
+    y1 = clamp(y1, 0, maxY);
+    z1 = clamp(z1, 0, maxZ);
+
+    // Compute linear indices
+    uint sx = diffTexPair.p.size.x;
+    uint sy = diffTexPair.p.size.y;
+    uint idx000 = (uint(z0) * sy + uint(y0)) * sx + uint(x0);
+    uint idx100 = (uint(z0) * sy + uint(y0)) * sx + uint(x1);
+    uint idx010 = (uint(z0) * sy + uint(y1)) * sx + uint(x0);
+    uint idx110 = (uint(z0) * sy + uint(y1)) * sx + uint(x1);
+    uint idx001 = (uint(z1) * sy + uint(y0)) * sx + uint(x0);
+    uint idx101 = (uint(z1) * sy + uint(y0)) * sx + uint(x1);
+    uint idx011 = (uint(z1) * sy + uint(y1)) * sx + uint(x0);
+    uint idx111 = (uint(z1) * sy + uint(y1)) * sx + uint(x1);
+
+    // Fetch texels
+    
+
+    // Trilinear weights
+    float wx0 = (1.0 - fx);
+    float wy0 = (1.0 - fy);
+    float wz0 = (1.0 - fz);
+    float wx1 = fx;
+    float wy1 = fy;
+    float wz1 = fz;
+
+    float w000 = wx0 * wy0 * wz0;
+    float w100 = wx1 * wy0 * wz0;
+    float w010 = wx0 * wy1 * wz0;
+    float w110 = wx1 * wy1 * wz0;
+    float w001 = wx0 * wy0 * wz1;
+    float w101 = wx1 * wy0 * wz1;
+    float w011 = wx0 * wy1 * wz1;
+    float w111 = wx1 * wy1 * wz1;
+
+
+    [ForceUnroll]
+    for (int i = 0; i < N; ++i)
+    {
+        diffTexPair.d.dTex[idx000][i].add(dOut[i] * (T)w000);
+        diffTexPair.d.dTex[idx100][i].add(dOut[i] * (T)w100);
+        diffTexPair.d.dTex[idx010][i].add(dOut[i] * (T)w010);
+        diffTexPair.d.dTex[idx110][i].add(dOut[i] * (T)w110);
+        diffTexPair.d.dTex[idx001][i].add(dOut[i] * (T)w001);
+        diffTexPair.d.dTex[idx101][i].add(dOut[i] * (T)w101);
+        diffTexPair.d.dTex[idx011][i].add(dOut[i] * (T)w011);
+        diffTexPair.d.dTex[idx111][i].add(dOut[i] * (T)w111);
+    }
 }

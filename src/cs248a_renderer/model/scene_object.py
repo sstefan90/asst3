@@ -30,11 +30,43 @@ class SceneObject:
 
         :return: The 4x4 world transform matrix.
         """
-        # TODO: Student implementation starts here.
 
-        return self.transform.get_matrix()
+        #final = gml.identity(glm.vec(4))
 
-        # TODO: Student implementation ends here.
+        current = self.parent
+        result = self.transform.get_matrix()
+
+        while current:
+            parent_m = current.transform.get_matrix()
+            result = parent_m * result
+            current = current.parent
+
+        return result
+
+        #for i in range(len(children)):
+        #    final = glm.matmul(children[len(children)-i-1].transform.get_matrix(), final)
+
+        #find the position from the final matrix
+
+        #position = final[3].xyz
+        #scale = glm.vec3(1.0, 1.0, 1.0)
+
+        # find th scale
+        #scale.x = glm.distance(final[0].xyz)
+        #scale.y = glm.distance(final[1].xyz)
+        #scale.z = glm.distance(final[2].xyz)
+
+        #rotation = glm.mat3(final[0].xyz / scale.x, final[1].xyz / scale.y, final[2].xyz / scale.z)
+        #rotation_quat = glm.quat_cast(rotation)
+
+        #self.transform.scale = scale
+        #self.transform.position = position
+        #self.transform.rotation = rotation_quat
+
+
+        #return #final #self.transform.get_matrix()
+
+        
 
     def desc(self, depth: int = 0) -> str:
         indent = "  " * depth

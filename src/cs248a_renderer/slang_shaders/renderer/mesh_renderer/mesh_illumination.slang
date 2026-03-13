@@ -30,10 +30,9 @@ public Ray getShadowRay(LightSample lightSample, float3 hitPoint)
     const float EPSILON = 1e-2;
     Ray shadowRay = Ray(float3(0.0), float3(0.0), float2(EPSILON, lightSample.lightDistance - EPSILON));
 
-    // TODO: Student implementation starts here.
-
-    // TODO: Student implementation ends here.
-
+    // LightSample(lightDirection, radiance, pdf, lightDistance);
+    shadowRay.origin = hitPoint; 
+    shadowRay.direction = normalize(lightSample.lightDirection);  
     return shadowRay;
 }
 
@@ -41,16 +40,26 @@ public bool isLightOccluded(LightSample lightSample, float3 hitPoint, RendererUn
 {
     bool occluded = false;
 
-    // TODO: Student implementation starts here.
+    
 
     // Step 1: Generate the shadow ray
 
+    Ray shadowRay = getShadowRay(lightSample, hitPoint);
+
     // Step 2: Check if the shadow ray intersects with any rectangular light or mesh.
-    // HINT: Check the modified signature of `rayMeshIntersection` function in ray_mesh_intersection.slang.
-    // Can you modify it to make it faster for this particular use case?
+    
+    Optional<RayMeshIntersectionResult> rayMeshIntersectionResult = rayMeshIntersection(shadowRay, uniforms, true);
+
+    if (rayMeshIntersectionResult.hasValue)
+    {
+        return true;
+    }
+
+    // Check the modified signature of `rayMeshIntersection` function in ray_mesh_intersection.slang.
+    // modify it to make it faster for this particular use case?
     // Also, make use of `rayRectangularLightIntersection` function. Check its usage in `mesh_renderer.slang`.
 
-    // TODO: Student implementation ends here.
+    
 
     return occluded;
 }
@@ -86,7 +95,7 @@ public float3 evaluateFlashLightContribution(float3 hitPoint, float3 fr, float3 
 public float3 evaluatePointLightContribution(StructuredBuffer<PointLight> pointLightBuf, uint pointLightCount, float3 hitPoint, float3 fr, float3 normal, RendererUniform uniforms, bool lambertianScattering = false)
 {
     float3 outgoingRadiance = float3(0.0);
-    float fallOffFactor = 1.0;  // Point light falls off with distance. Calculate it below.
+    float fallOffFactor = 1.0;  // Point light falls off with distance.
     for (int i = 0; i < pointLightCount; i++)
     {
         LightSample lightSample = pointLightBuf[i].sample(hitPoint);
@@ -96,12 +105,8 @@ public float3 evaluatePointLightContribution(StructuredBuffer<PointLight> pointL
             continue;
         }
 
-        // TODO: Student implementation starts here.
-
-        // Calculate the fall off factor for point light.
-
-        // TODO: Student implementation ends here.
-
+        
+        fallOffFactor = pow(length(hitPoint - pointLightBuf[i].position), 2);
         float3 sampleIrradiance = getSampleIrradiance(lightSample, normal, lambertianScattering, fallOffFactor);
         // PDF is used for Monte-Carlo integration. But it is only needed for light
         // sources that have an area, for eg. rectangular light. Therefore, we are
@@ -261,13 +266,33 @@ public SampleBRDFResult sampleBRDF(PhysicsBasedParameters parameters, float3 ray
             // Extra Credit: Fresnel effect for Glass BRDF
             // TODO: Student implementation starts here.
 
-            // Naive Glass BRDF sampling without Fresnel effect.
-            GlassBRDF brdf = GlassBRDF(parameters.albedo, parameters.ior);
-            fr = brdf.evaluate();
-            sampledDirection = brdf.sample(rayOut, normal);
-            float glassPdf = brdf.pdf(sampledDirection, rayOut, normal);
-            // Account for the probability of choosing glass in the overall PDF
-            sampledPdf = glassPdf;
+            float cosTheta = dot(normalize(rayOut), normalize(normal));
+            bool entering = cosTheta > 0.0;
+            float n1 = entering ? 1.0 : parameters.ior;
+            float n2 = entering ? parameters.ior : 1.0;
+
+            float R = pow((n1 - n2) / (n1 + n2), 2.0);
+            float R_theta = R + (1.0 - R) * pow(1.0 - abs(cosTheta), 5.0);
+            if (rng.next_1d() < R_theta)
+            {
+                // Reflect
+                MirrorBRDF brdf = MirrorBRDF(parameters.albedo);
+                fr = brdf.evaluate();
+                sampledDirection = brdf.sample(rayOut, normal);
+                float glassPdf = brdf.pdf(sampledDirection, rayOut, normal);
+                // Account for the probability of choosing glass in the overall PDF
+                sampledPdf = glassPdf * R_theta;
+            }
+            else
+            {
+                // Refract
+                GlassBRDF brdf = GlassBRDF(parameters.albedo, parameters.ior);
+                fr = brdf.evaluate();
+                sampledDirection = brdf.sample(rayOut, normal);
+                float glassPdf = brdf.pdf(sampledDirection, rayOut, normal);
+                // Account for the probability of choosing glass in the overall PDF
+                sampledPdf = glassPdf * (1.0 - R_theta);
+            }
 
             // TODO: Student implementation ends here.
         }

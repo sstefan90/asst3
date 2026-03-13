@@ -61,6 +61,15 @@ class MaterialField[T]:
                 "Texture map path or textures array is required for texture material"
             )
 
+    def downsample_texture(self, texture: np.ndarray) -> np.ndarray:
+
+        h, w, c = texture.shape
+        new_h, new_w = max(1, h // 2), max(1, w // 2)
+
+        downsample = texture.reshape(new_h, 2, new_w, 2, c).mean(axis=(1, 3))
+        #print(downsample.shape)
+        return downsample
+
     def generate_mipmaps(self, base_texture: np.ndarray) -> None:
         """Generate mipmaps from a base texture image.
 
@@ -69,10 +78,17 @@ class MaterialField[T]:
         # This is level 0 mipmap. It is the original texture. Populate this list
         #  with other mipmap levels, in increasing order of levels.
         textures = [base_texture]
+        cur_texture = base_texture
+        for level in range(1, self.MAX_MIP_LEVELS):
+            cur_texture = self.downsample_texture(cur_texture)
+            if cur_texture.shape[0] == 1 and cur_texture.shape[1] == 1:
+                break
+            textures.append(cur_texture)
 
-        # TODO: Student implementation starts here.
+        #print(f"Generated {len(textures)} mipmap levels for texture with original size {base_texture.shape[1]}x{base_texture.shape[0]}")
+        
 
-        # TODO: Student implementation ends here.
+
 
         self.textures = textures
 

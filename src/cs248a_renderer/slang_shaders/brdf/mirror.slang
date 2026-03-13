@@ -20,6 +20,14 @@ public struct MirrorBRDF
         // and finally convert it to the world space.
 
         // TODO: Student implementation starts here.
+        normal = normalize(normal); // just in case
+        float3 normalLocal = mul(worldToLocalMatrix, normal);
+        float3 rayOutLocal = mul(worldToLocalMatrix, rayOut);
+        float3 rayReflect = -rayOutLocal + 2*dot(rayOutLocal, normalLocal) * normalLocal;
+        sampleDirection = mul(localToWorldMatrix, rayReflect);
+        sampleDirection = normalize(sampleDirection);
+
+
 
         // TODO: Student implementation ends here.
 
@@ -33,9 +41,7 @@ public struct MirrorBRDF
         float3x3 worldToLocalMatrix = getWorldToLocalMatrix(normal, rayOut);
 
         // TODO: Student implementation starts here.
-
-        // TODO: Student implementation ends here.
-
-        return pdf;
+        float cosTheta = dot(rayIn, normal);
+        return max(cosTheta, 0.0);
     }
 }

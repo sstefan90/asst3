@@ -25,23 +25,75 @@ public Optional<RectangularLight.LightHitResult> rayRectangularLightIntersection
     return closestLightHitResult;
 }
 
+public Optional<RayMeshIntersectionResult> rayTriangles(Ray ray, StructuredBuffer<Triangle> triangles, uint triangleCount)
+{
+
+    // find the normal of the plane defined by the triangle
+    Optional<RayHitResult> result;
+    Triangle hitTriangle;
+    float t_smallest = float.maxValue;
+    for (int i = 0; i < triangleCount; i++)
+    {
+        Optional<RayHitResult> hitResult = triangles[i].hit(ray);
+        if (hitResult.hasValue) {
+            if (hitResult.value.t < t_smallest)
+            {
+                t_smallest = hitResult.value.t;
+                result = hitResult;
+                hitTriangle = triangles[i];
+            }
+        }
+    }
+
+    if (t_smallest == float.maxValue)
+    {
+        return Optional<RayMeshIntersectionResult>();
+    }
+
+    return Optional<RayMeshIntersectionResult>(RayMeshIntersectionResult(result.value, hitTriangle));
+
+}
+
 public Optional<RayMeshIntersectionResult> rayMeshIntersection(Ray ray, RendererUniform uniforms, bool occlusionTest = false)
 {
     Optional<RayHitResult> result = Optional<RayHitResult>();
-    Optional<RayMeshIntersectionResult> allResult = Optional<RayMeshIntersectionResult>();
-    Optional<Triangle> hitTriangle = Optional<Triangle>();
 
-    // IMPORTANT NOTE: Check the modified signature of `rayMeshIntersection` function in ray_mesh_intersection.slang.
-    // Can you modify your existing code to make use of this flag? This is helpful in `isLightOccluded` function.
+    // IMPORTANT CHANGE: We need to store the hit triangle.
+    Optional<RayMeshIntersectionResult> allResult = Optional<RayMeshIntersectionResult>();
+    //Optional<Triangle> hitTriangle = Optional<Triangle>();
+    // IMPORTANT CHANGE: We need to store the hit triangle.
 
     // TODO: Student implementation starts here.
+    float t_min = float.maxValue;
 
+    if (!uniforms.useBVH) {
+    
+        allResult = rayTriangles(ray, uniforms.triangleBuf, uniforms.triangleCount);
+    }
+    else {
+        Optional<uniforms.bvh.HitResult> res = Optional<uniforms.bvh.HitResult>();
+
+        if (occlusionTest) {
+            res = uniforms.bvh.hitAny(ray);
+        }
+        else {
+            res = uniforms.bvh.hit(ray);
+        }
+
+        if (res.hasValue) {
+            Triangle hitTriangle = res.value.primitive;
+            RayHitResult rayHitResult = res.value.rayHitResult;
+            allResult = Optional<RayMeshIntersectionResult>(RayMeshIntersectionResult(rayHitResult, hitTriangle));
+
+        }
+
+    }
+    
     // TODO: Student implementation ends here.
 
-    if (result.hasValue && hitTriangle.hasValue)
-    {
-        allResult = Optional<RayMeshIntersectionResult>(RayMeshIntersectionResult(result.value, hitTriangle.value));
-    }
+    //{
+    //    allResult = Optional<RayMeshIntersectionResult>(RayMeshIntersectionResult(result.value, hitTriangle.value));
+    //}
 
     return allResult;
 }

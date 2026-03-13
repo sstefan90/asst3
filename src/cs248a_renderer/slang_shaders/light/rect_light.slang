@@ -36,64 +36,67 @@ public struct RectangularLight
     public float getPdf(float3 hitPoint, float3 pointOnLight)
     {
         const float EPSILON = 1e-6;
-        float pdf = 1.0;
 
-        // TODO: Student implementation starts here.
-
-        // TODO: Student implementation ends here.
-
-        return pdf;
+        float3 toLight = pointOnLight - hitPoint;
+        float distance_2 = dot(toLight, toLight);
+        //distance_2 = max(distance_2, 1e-4);
+        float3 lightDir = normalize(toLight);
+        
+        float cos_theta_p = dot(-lightDir, this.normal);
+        
+        if (cos_theta_p <= 0.0)
+        {
+            return float.maxValue;
     }
+
+        return distance_2 / (cos_theta_p * this.area);
+    }
+
+    
 
     public float3 getRadiance(float3 lightDirection, float lightDistance)
     {
         return this.color * this.intensity;
     }
 
+    
+
     public Optional<LightHitResult> hit(Ray ray)
     {
-        Optional<LightHitResult> lightHitResult = Optional<LightHitResult>();
-        // Create 2 triangles from the rectangle
-        // Recover the vertices of the triangles
-        float3 v0 = this.bottomLeftVertex;
-        float3 v1 = v0 + this.bottomEdge;
-        float3 v2 = v1 + this.leftEdge;
-        float3 v3 = v0 + this.leftEdge;
-
-        float3[3] vertices1 = float3[3](v0, v1, v2);
-        float3[3] vertices2 = float3[3](v0, v2, v3);
-        float3[3] normals = float3[3](this.normal, this.normal, this.normal);
-        float2[3] uvs = float2[3](float2(0.0, 0.0), float2(1.0, 0.0), float2(1.0, 1.0));
-        float3[3] colors = float3[3](this.color, this.color, this.color);
-
-        Triangle triangle1 = Triangle(vertices1, normals, uvs, colors);
-        Triangle triangle2 = Triangle(vertices2, normals, uvs, colors);
-
-        Optional<RayHitResult> hitResult = Optional<RayHitResult>();
-        Optional<RayHitResult> hitResult1 = triangle1.hit(ray);
-
-        if (hitResult1.hasValue && hitResult.value.t <= ray.tRange.y)
+        const float EPSILON = 1e-6;
+        
+        float denom = dot(ray.direction, this.normal);
+        
+        if (abs(denom) < EPSILON)
         {
-            hitResult = hitResult1;
+            return Optional<LightHitResult>();
         }
-        else
+        
+        float3 planePoint = this.bottomLeftVertex;
+        float t = dot(planePoint - ray.origin, this.normal) / denom;
+        
+        if (t < ray.tRange.x || t > ray.tRange.y)
         {
-            Optional<RayHitResult> hitResult2 = triangle2.hit(ray);
-            if (hitResult2.hasValue && hitResult.value.t <= ray.tRange.y)
-            {
-                hitResult = hitResult2;
-            }
+            return Optional<LightHitResult>();
         }
+        
+        float3 hitPoint = ray.origin + t * ray.direction;
+        float3 localPoint = hitPoint - this.bottomLeftVertex;
+        
+        
+        float bottomEdgeLengthSq = dot(this.bottomEdge, this.bottomEdge);
+        float leftEdgeLengthSq = dot(this.leftEdge, this.leftEdge);
+        
+        float u = dot(localPoint, this.bottomEdge) / bottomEdgeLengthSq;
+        float v = dot(localPoint, this.leftEdge) / leftEdgeLengthSq;
 
-        if (hitResult.hasValue)
+        if (u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0)
         {
-            // Calculate the radiance at the hit point
-            float3 hitPoint = ray.origin + hitResult.value.t * ray.direction;
-            float lightDistance = length(hitPoint - ray.origin - ray.tRange.x * ray.direction);
-            float3 radiance = getRadiance(ray.direction, lightDistance);
-            return Optional<LightHitResult>(LightHitResult(hitResult.value.t, hitResult.value.normal, radiance));
+            return Optional<LightHitResult>();
         }
-
-        return Optional<LightHitResult>();
+        
+        float lightDistance = length(hitPoint - ray.origin);
+        float3 radiance = getRadiance(ray.direction, lightDistance);
+        return Optional<LightHitResult>(LightHitResult(t, this.normal, radiance));
     }
 }

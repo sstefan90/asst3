@@ -29,18 +29,35 @@ public struct LambertianBRDF
         if (this.useCosineWeightedSampling)
         {
             // TODO: Student implementation starts here.
+            float2 xy = randomEpsilon;
+            float phi = 2.0 * PI * randomEpsilon.x;
+            float r = sqrt(randomEpsilon.y);
+            float x = r * cos(phi);
+            float z = r * sin(phi);
+            float y = sqrt(max(0.0, 1.0 - x * x - z * z));
 
-            sampleDirection = sampleDirection;
+            sampleDirection = float3(x, y, z);
+
+            sampleDirection = normalize(mul(localToWorldMatrix, sampleDirection));
 
             // TODO: Student implementation ends here.
         }
         else // uniform sampling, use uniform sampling by default
         {
-            // TODO: Student implementation starts here.
+            // sample direction
+            float phi = 2.0 * PI * randomEpsilon.x;
+            float cosTheta = randomEpsilon.y;
+            float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+            float x = sinTheta * cos(phi);
+            float z = sinTheta * sin(phi);
+            float y = cosTheta;
 
-            sampleDirection = sampleDirection;
+            sampleDirection.x = x;
+            sampleDirection.y = y;
+            sampleDirection.z = z;
 
-            // TODO: Student implementation ends here.
+            sampleDirection = normalize(mul(localToWorldMatrix, sampleDirection));
+            //sampleDirection = normalize(mul( sampleDirection, localToWorldMatrix));
         }
 
         return sampleDirection;
@@ -50,22 +67,31 @@ public struct LambertianBRDF
     {
         float EPSILON = 1e-6;
         float pdf = all(abs(rayIn - rayOut) < EPSILON) ? 1.0 : 0.0;
-
+        rayIn = normalize(rayIn);
+        rayOut = normalize(rayOut);
         if (this.useCosineWeightedSampling)
         {
-            // TODO: Student implementation starts here.
-            
-            pdf = pdf;
+            float cosTheta = dot(rayIn, normal);
+            if (cosTheta <= EPSILON)
+            {
+                return float.maxValue;
+            }
+            pdf = cosTheta * INV_PI;
 
-            // TODO: Student implementation ends here.
+            
         }
         else // uniform sampling, use uniform sampling by default
         {
-            // TODO: Student implementation starts here.
-            
-            pdf = pdf;
+            float cosTheta = dot(rayIn, normal);
+            if (cosTheta <= EPSILON)
+            {
+                return float.maxValue;
+            }
 
-            // TODO: Student implementation ends here.
+
+
+            pdf =  0.5 * INV_PI;
+
         }
 
         return pdf;

@@ -94,10 +94,97 @@ public struct BVH<T>
         Optional<HitResult> hitResult = Optional<HitResult>();
         HitStack<64> stack;
 
-        // TODO: Student implementation starts here.
+        stack.push(0);
+        float t_min = float.maxValue;
+        while (!stack.isEmpty()) {
+            uint node_idx = stack.pop();
+            BVHNode node = nodes[node_idx];
 
-        // TODO: Student implementation ends here.
+            float2 box_hit = node.bound.hit(ray);
+
+            if ((box_hit[0] == -1) || (box_hit[0] > t_min)) {
+                continue;
+            }
+
+            // check if it's a leaf
+            if (node.left == -1) {
+                for (uint i = node.primLeft; i < node.primRight; i++) {
+                    T prim = primitives[i];
+                    Optional<RayHitResult> result = prim.hit(ray);
+
+                    if (result.hasValue) {
+                        RayHitResult res = result.value;
+
+                        if (res.t < t_min) {
+                            t_min = res.t;
+
+                            HitResult candidate;
+                            candidate.primitive = prim;
+                            candidate.rayHitResult = res;
+                            hitResult = Optional<HitResult>(candidate);
+                        }
+
+                    }
+                }
+            }
+
+            else {
+                if (node.right != -1) stack.push(node.right);
+                if (node.left != -1) stack.push(node.left);
+            }
+        }
 
         return hitResult;
+
+    }
+
+
+
+    // BVH traversal to find ANY hit!
+    public Optional<HitResult> hitAny(Ray ray)
+    {
+        // Initialize traversal.
+        Optional<HitResult> hitResult = Optional<HitResult>();
+        HitStack<64> stack;
+
+        stack.push(0);
+        float t_min = float.maxValue;
+        while (!stack.isEmpty()) {
+            uint node_idx = stack.pop();
+            BVHNode node = nodes[node_idx];
+
+            float2 box_hit = node.bound.hit(ray);
+
+            if ((box_hit[0] == -1) || (box_hit[0] > t_min)) {
+                continue;
+            }
+
+            // check if it's a leaf
+            if (node.left == -1) {
+                for (uint i = node.primLeft; i < node.primRight; i++) {
+                    T prim = primitives[i];
+                    Optional<RayHitResult> result = prim.hit(ray);
+
+                    if (result.hasValue) {
+                        RayHitResult res = result.value;
+                        HitResult candidate;
+                        candidate.primitive = prim;
+                        candidate.rayHitResult = res;
+                        hitResult = Optional<HitResult>(candidate);
+
+                        return hitResult;
+                        }
+
+                    }
+                }
+
+            else {
+                if (node.right != -1) stack.push(node.right);
+                if (node.left != -1) stack.push(node.left);
+                }
+        }
+
+        return hitResult;
+
     }
 }

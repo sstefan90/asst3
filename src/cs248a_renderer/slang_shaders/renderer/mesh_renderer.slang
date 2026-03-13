@@ -95,10 +95,19 @@ public Optional<RayMeshSampleResult> meshSample(float2 uv, RendererUniform unifo
                 float3 rayOut = -ray.direction;
                 float3 directIllumination = getDirectIllumination(parameters, uniforms, rayOut, normal, hitPoint, rng);
                 radiance += directIllumination * throughput;
+                
+
+                // REMOVE THIS
+                //return Optional<RayMeshSampleResult>(RayMeshSampleResult(t, normalAtFirstHit, float4(radiance, 1.0)));
 
                 // TODO: Student implementation starts here.
                 // Step 4: Setup for Indirect Illumination by sampling the BRDF for
                 // the ray direction of the next bounce.
+
+                //sampleBRDF(PhysicsBasedParameters parameters, float3 rayOut, float3 normal, RendererUniform uniforms, inout RNG rng)
+                SampleBRDFResult sampleBRDFResult = sampleBRDF(parameters, rayOut, normal, uniforms, rng);
+                float cosTheta = dot(normalize(sampleBRDFResult.sampledDirection), normalize(normal));
+  
 
                 // TODO Step 4a: Student implementation starts here.
 
@@ -119,8 +128,7 @@ public Optional<RayMeshSampleResult> meshSample(float2 uv, RendererUniform unifo
                 if (parameters.brdfType != 2)
                 {
                     // TODO Step 4b: Student implementation starts here.
-                    
-                    throughput *= 0.0;
+                    throughput = throughput * sampleBRDFResult.fr * cosTheta / (sampleBRDFResult.sampledPdf + EPSILON);
                     
                     // TODO Step 4b: Student implementation ends here.
 
@@ -142,6 +150,10 @@ public Optional<RayMeshSampleResult> meshSample(float2 uv, RendererUniform unifo
 
                 // Step 4c: Update the ray for the next bounce.
                 // TODO Step 4c: Student implementation starts here.
+                float3 offset = dot(sampleBRDFResult.sampledDirection, result.normal) >= 0.0 ? EPSILON * result.normal : -EPSILON * result.normal;
+                //offset = EPSILON * result.normal;
+                ray.origin = hitPoint + offset;
+                ray.direction = normalize(sampleBRDFResult.sampledDirection);
 
                 // TODO Step 4c: Student implementation ends here.
 
